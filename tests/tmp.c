@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <sys/time.h>    // for gettimeofday()
 
 #define NUM_THREADS 2
 
@@ -24,6 +25,11 @@ struct thread_data{
    int  thread_id;
    //struct poptrie *poptrie;
 };
+
+//struct timeval{
+//   long int tv_sec; // 秒数
+//   long int tv_usec; // 微秒数
+//}
 
 struct poptrie *poptrie;
 
@@ -110,6 +116,11 @@ test_lookup(void *threadarg)
    u64 i;
    int tm;
    char type;
+   int tmp1, tmp2;
+
+   struct timeval start, end;
+   gettimeofday( &start, NULL );
+   printf("start : %d.%d\n", start.tv_sec, start.tv_usec);
 
    fp = fopen("linx-update.20141217.0000-p52.txt", "r");
     //fp = fopen("rib.20141217.0000", "r");
@@ -135,10 +146,12 @@ test_lookup(void *threadarg)
       addr2 = ((u32)nexthop[0] << 24) + ((u32)nexthop[1] << 16)
          + ((u32)nexthop[2] << 8) + (u32)nexthop[3];
 
-     /* Add an entry */
-     if ( poptrie_lookup(poptrie, addr1) != poptrie_rib_lookup(poptrie, addr1) ) {
-         printf("%s%d\n", "\nLookUp Error", addr1);
-         return -1;
+     /* Search */
+      tmp1 = poptrie_lookup(poptrie, addr1);
+      tmp2 = poptrie_rib_lookup(poptrie, addr1);
+     if (tmp1  !=  tmp2) {
+         printf("%s%d%s%d\n", "\nLookUp Error->", tmp1, " != ", tmp2);
+         //return -1;
      }
      if ( 0 == i % 1000 ) {
          //sleep(1);
@@ -165,8 +178,10 @@ test_lookup(void *threadarg)
      }
    }
    */
+   gettimeofday( &end, NULL );
+   printf("end   : %d.%d\n", end.tv_sec, end.tv_usec);
 
-   printf("%s\n", "\n--LookUp Finish--");
+   printf("%s%d\n", "\n--LookUp Finish-->", i);
    my_data->thread_id = -1;
    return 0;
 }
@@ -232,7 +247,7 @@ test_linx_update(void *threadarg)
             }
         }
         if ( 0 == i % 1000 ) {
-            printf("-");
+            printf("^|-");
             fflush(stdout);
         }
         i++;
@@ -278,31 +293,13 @@ int main()
        printf("%s%d\n", "pthread_create error: error_code=", ret);
     }
 
-    
-    
-    /*
-    endflag = 1;
-    do {
-      for (i = 0; i < NUM_THREADS; ++i) {
-         //printf("%s%d\n", "tid = ", i);
-         if (td[i].thread_id >= 0) {
-            break;
-         }
-      }
-      if (i == NUM_THREADS) {
-         endflag = 0;
-      }
-    } while(endflag);
-    printf("%s\n", "\n---\tEnd\t---");
-    
-    */
-
     //等各个线程退出后，进程才结束，否则进程强制结束了，线程可能还没反应过来；
     pthread_join(tids[0], NULL);
     pthread_join(tids[1], NULL);
 
     // /* Release 
     poptrie_release(poptrie);
+    printf("%s%d\n", "\n---\tEnd\t---", popcnt(0x100100100100));
     //pthread_exit(NULL);
 
     return 0;
